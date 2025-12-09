@@ -11,7 +11,7 @@ def symbolic_to_array(seq_str):
 
     return array.array('I', int_list)
 
-def causal_direction(Xs, Ys, analysis_print=False, penalty_threshold=1, efficacy_tolerance=0):
+def get_ccm_results(Xs, Ys, penalty_threshold=1, efficacy_tolerance=0):
     x_array = symbolic_to_array(Xs)
     y_array = symbolic_to_array(Ys)
 
@@ -21,32 +21,4 @@ def causal_direction(Xs, Ys, analysis_print=False, penalty_threshold=1, efficacy
         penalty_threshold=penalty_threshold,
         efficacy_tolerance=efficacy_tolerance
     )
-
-    cause_map = {
-        'x':1, # X causes Y
-        'y':2, # Y causes X
-        'n_or_m':3 # Undetermined
-    }
-
-    if results['Consensus']:
-        cause = results['ETCP_cause']
-        if cause in cause_map:
-            return cause_map[cause]
-        
-        return 3
-        
-    causes = [results['ETCP_cause'], results['ETCE_cause'], results['LZP_cause']]
-    # print(causes)
-    counts = Counter(causes)
-    # print(counts)
-    
-    if counts['x'] >= 2:
-        return 1
-
-    elif counts['y'] >= 2:
-        return 2
-    
-    elif counts['n_or_m'] >= 2:
-        return 3
-    
-    return 0
+    return results

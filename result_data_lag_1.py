@@ -1,22 +1,59 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.io import loadmat
-from Dictionary_Causal_Estimator import causal_direction
 
+from Dictionary_Causal_Estimator import get_ccm_results 
+
+def map_cause_string_to_int(cause_string):
+    """Maps the 'cause' string output to the integer categories for plotting."""
+    if cause_string == 'x':
+        return 1  # X causes Y
+    elif cause_string == 'y':
+        return 2  # Y causes X
+    elif cause_string == 'n_or_m':
+        return 3  # Undetermined/Mutual/No-causality
+    else:
+        return 3 
+
+def plot_causality_results(coupling_values, counts_matrix, method_name):
+    """Generates a grouped bar plot for a specific method."""
+    
+    categories = [0, 1, 2, 3]
+    
+    x = np.arange(len(coupling_values))
+    width = 0.18
+    offsets = [-1.5*width, -0.5*width, 0.5*width, 1.5*width]
+
+    plt.figure(figsize=(16, 7))
+
+    for i, cat in enumerate(categories):
+        if i < counts_matrix.shape[1]:
+            plt.bar(x + offsets[i], counts_matrix[:, i], width=width, label=f"value = {cat}")
+
+    plt.xticks(x, [f"{v:.1f}" for v in coupling_values], rotation=45, fontsize=20)
+    plt.yticks(fontsize=20)
+    plt.xlabel("Causal Strength (η)", fontsize=22)
+    plt.ylabel(f"Count of {method_name} Output", fontsize=22)
+    plt.title(f"Causal Direction Results using {method_name}", fontsize=24)
+    plt.legend(fontsize=18)
+    plt.tight_layout()
+    
+    plt.savefig(f'Results/{method_name}_output.png')
+    plt.close()
 
 # -----------------------------------------------------
-# LOAD .MAT DATA
+# LOAD .MAT DATA AND INITIALIZE
 # -----------------------------------------------------
 
-data = loadmat("Dataset/causal_symbolic_data.mat")
+data = loadmat("Dataset/causal_symbolic_data.mat") 
 
-# strengths: 0.0, 0.1, ..., 1.0
 coupling_values = np.arange(0, 1.1, 0.1)
-
-# MATLAB keys: "strength_0.0", "strength_0.1", ..., "strength_1.0"
 coupling_keys = [f"strength_{v:.1f}" for v in coupling_values]
 
-results = {float(f"{v:.1f}"): [] for v in coupling_values}
+# Separate results dictionaries for each method
+results_ETCP = {float(f"{v:.1f}"): [] for v in coupling_values}
+results_ETCE = {float(f"{v:.1f}"): [] for v in coupling_values}
+results_LZP = {float(f"{v:.1f}"): [] for v in coupling_values}
 
 
 # -----------------------------------------------------
@@ -28,66 +65,45 @@ for eta, key in zip(coupling_values, coupling_keys):
 
     print(f"Processing causal strength η = {eta_clean:.1f}")
 
-    # Access the single element of the (1, 1) MATLAB structured array
     D = data[key][0][0]
-
-    # D["X"] and D["Y"] are (100, 300) numpy arrays of characters
     X_sets = D["X"]
     Y_sets = D["Y"]
 
-    # Iterate over all 100 samples/rows in the dataset
     num_samples = X_sets.shape[0]
 
     for i in range(num_samples): 
-        Xs = [str(x[0]) for x in X_sets[i]]
-        Ys = [str(y[0]) for y in Y_sets[i]]
         Xs = "".join(X_sets[i])
         Ys = "".join(Y_sets[i])
 
-        # Run your causality estimator
-        value = causal_direction(Xs, Ys, analysis_print=False)
-        # print(value)
-        # value  = 1 means X causes Y
-        # value = 2 means Y causes X
-        # value  = 0 means independent
-        # value  = 3 means undetermined.
+        ccm_results = get_ccm_results(Xs, Ys)
 
-        results[eta_clean].append(value)
-    # print("="*30)
+        results_ETCP[eta_clean].append(map_cause_string_to_int(ccm_results['ETCP_cause']))
+        results_ETCE[eta_clean].append(map_cause_string_to_int(ccm_results['ETCE_cause']))
+        results_LZP[eta_clean].append(map_cause_string_to_int(ccm_results['LZP_cause']))
 
-print("\nProcessing complete. Results:")
-print(results)
-
+print("\nProcessing complete. Generating plots.")
 
 # -----------------------------------------------------
-# GROUPED BAR PLOT
+# GENERATE COUNTS AND PLOTS
 # -----------------------------------------------------
 
-categories = [0, 1, 2, 3]  # causal_direction outputs
-counts_matrix = []
+results_mapping = {
+    'ETCP': results_ETCP, 
+    'ETCE': results_ETCE, 
+    'LZP': results_LZP
+}
+categories = [0, 1, 2, 3]
 
-for eta in coupling_values:
-    vals = results[float(f"{eta:.1f}")]
-    counts_matrix.append([vals.count(c) for c in categories])
+for method_name, results_dict in results_mapping.items():
+    counts_matrix = []
+    
+    for eta in coupling_values:
+        vals = results_dict[float(f"{eta:.1f}")]
+        counts_matrix.append([vals.count(c) for c in categories])
 
-counts_matrix = np.array(counts_matrix)
-print(counts_matrix)
+    counts_matrix = np.array(counts_matrix)
+    
+    plot_causality_results(coupling_values, counts_matrix, method_name)
+    print(f"Generated plot: {method_name}_output.png")
 
-x = np.arange(len(coupling_values))
-width = 0.18
-offsets = [-1.5*width, -0.5*width, 0.5*width, 1.5*width]
-
-
-plt.figure(figsize=(16, 7))
-
-for i, cat in enumerate(categories):
-    plt.bar(x + offsets[i], counts_matrix[:, i], width=width, label=f"value = {cat}")
-
-plt.xticks(x, [f"{v:.1f}" for v in coupling_values], rotation=45, fontsize=25)
-plt.yticks(fontsize=25)
-plt.xlabel("Causal Strength (η)", fontsize=25)
-plt.ylabel("Count of causal_direction output", fontsize=25)
-plt.legend(fontsize=20)
-plt.tight_layout()
-plt.savefig('Results/output.png')
-plt.show()
+print("\nAll plots generated successfully.")
