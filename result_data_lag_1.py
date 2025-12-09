@@ -8,12 +8,11 @@ def map_cause_string_to_int(cause_string):
     """Maps the 'cause' string output to the integer categories for plotting."""
     if cause_string == 'x':
         return 1  # X causes Y
-    elif cause_string == 'y':
+    if cause_string == 'y':
         return 2  # Y causes X
-    elif cause_string == 'n_or_m':
+    if cause_string == 'n_or_m':
         return 3  # Undetermined/Mutual/No-causality
-    else:
-        return 3 
+    return 0 
 
 def plot_causality_results(coupling_values, counts_matrix, method_name):
     """Generates a grouped bar plot for a specific method."""
