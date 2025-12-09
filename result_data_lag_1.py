@@ -77,6 +77,7 @@ x = np.arange(len(coupling_values))
 width = 0.18
 offsets = [-1.5*width, -0.5*width, 0.5*width, 1.5*width]
 
+
 plt.figure(figsize=(16, 7))
 
 for i, cat in enumerate(categories):
