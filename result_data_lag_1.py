@@ -37,6 +37,11 @@ def plot_causality_results(coupling_values, counts_matrix, method_name):
     plt.title(f"Causal Direction Results using {method_name}", fontsize=24)
     plt.legend(fontsize=18)
     plt.tight_layout()
+
+    import os
+
+    if not os.path.exists("Results"):
+        os.makedirs("Results")
     
     plt.savefig(f'Results/{method_name}_output.png')
     plt.close()
